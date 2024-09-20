@@ -23,6 +23,7 @@ import (
 	"github.com/haproxytech/kubernetes-ingress/pkg/annotations"
 	"github.com/haproxytech/kubernetes-ingress/pkg/haproxy/api"
 	"github.com/haproxytech/kubernetes-ingress/pkg/store"
+	"github.com/haproxytech/kubernetes-ingress/pkg/zone"
 )
 
 // HandleHAProxySrvs handles the haproxy backend servers of the corresponding IngressPath (service + port)
@@ -69,6 +70,10 @@ func (s *Service) updateHAProxySrv(client api.HAProxyClient, srvSlot store.HAPro
 	if srvSlot.Address != "" {
 		srv.Address = srvSlot.Address
 		srv.Maintenance = "disabled"
+		// Put in backup if cross zone traffic is disabled
+		if zone.IsBackupEnabledForThisIP(srv.Address) {
+			srv.Backup = "enabled"
+		}
 	}
 	logger.Tracef("[CONFIG] [BACKEND] [SERVER] backend %s: about to update server in configuration file :  models.Server { Name: %s, Port: %d, Address: %s, Maintenance: %s }", s.backend.Name, srv.Name, *srv.Port, srv.Address, srv.Maintenance)
 	// Update server
