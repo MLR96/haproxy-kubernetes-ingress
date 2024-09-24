@@ -8,6 +8,7 @@ import (
 
 	"github.com/haproxytech/kubernetes-ingress/pkg/store"
 	"github.com/haproxytech/kubernetes-ingress/pkg/utils"
+	"github.com/haproxytech/kubernetes-ingress/pkg/zone"
 )
 
 var ErrMapNotFound = fmt.Errorf("map not found")
@@ -130,7 +131,11 @@ func (c *clientNative) SyncBackendSrvs(backend *store.RuntimeBackend, portUpdate
 		} else {
 			logger.Tracef("[RUNTIME] [BACKEND] [SERVER] [SOCKET] backend %s: server '%s': addr '%s' changed status to %v", backend.Name, srv.Name, srv.Address, "ready")
 			addrErr = c.SetServerAddr(backend.Name, srv.Name, srv.Address, int(backend.Endpoints.Port))
-			stateErr = c.SetServerState(backend.Name, srv.Name, "ready")
+			if zone.IsBackupEnabledForThisIP(srv.Address) {
+				stateErr = c.SetServerState(backend.Name, srv.Name, "backup")
+			} else {
+				stateErr = c.SetServerState(backend.Name, srv.Name, "ready")
+			}
 		}
 		if addrErr != nil || stateErr != nil {
 			backend.DynUpdateFailed = true
